@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -18,15 +19,26 @@ type BookCountResponse struct {
 	Fraction float32 `json:"fraction"`
 }
 
-type ReadershipResponse struct {
+type ReadershipCountry struct {
 	Country 	string	`json:"country"`
 	Iso 		string	`json:"isocode"`
-	Nooks		int		`json:"books"`
+	Books 		int		`json:"books"`
 	Authors		int		`json:"authors"`
-	Readerhship	int		`json:"readership"`
+	Readership	int		`json:"readership"`
+}
+
+type StatusResponse struct{
+	GutendexAPI		string	`json:"gutendexapi"`
+	LanguageAPI		string	`json:"languageapi"`
+	CountriesAPI	string	`json:"countriesapi"`
+	Version 		string	`json:"version"`
+	Uptime			string 	`json:"uptime"`
 
 }
 
+type RestCountriesResponse []struct {
+	Population int `json:"population"`
+}
 
 type Country struct {
 	Iso_three 	string `json:"ISO3166_1_Alpha_3"`
@@ -160,30 +172,53 @@ func bookCountForSingleLanguage(language string, totalBooks int) BookCountRespon
 }
 
 func readership(w http.ResponseWriter, r *http.Request){
-	var language = path.Base(r.URL.Path)
-	var countryNames = getCountriesFromLanguage(language,10)
-	//
+	var limit = -1
 
-	for _, countryName := range countryNames{
-
+	if (r.URL.Query().Has("limit")){
+		limit, _ = strconv.Atoi(r.URL.Query().Get("limit"))
 	}
 
-	fmt.Fprintf(w, "Readership API")
+	var language = path.Base(r.URL.Path)
+	var countries = getCountriesFromLanguage(language,limit)
+	var response []ReadershipCountry
+
+
+
+	//fraction will be wrong here but it is not needed
+	var bookInfo = bookCountForSingleLanguage(language,100)
+
+	for _, country := range countries{
+		var population = getPopulationForCountry(country.OfficialName)
+
+		var singleCountry = ReadershipCountry{
+			country.OfficialName,
+			country.Iso_two,
+			bookInfo.Books,
+			bookInfo.Authors,
+			population,
+		}
+
+		response = append(response, singleCountry)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+
 	fmt.Println("Endpoint Hit: Readership")
 
-	//{
-	//     "country": "Norway",
-	//     "isocode": "NO",
-	//     "books": 21,
-	//     "authors": 14,
-	//     "readership": 5379475
-	//  },
 }
 
-func getCountriesFromLanguage(language string, limit int) []string{
+func getCountriesFromLanguage(language string, limit int) []Country{
 	var url = fmt.Sprintf("http://129.241.150.113:3000/language2countries/%s",language)
+
+	if (limit != -1){
+		url = url + fmt.Sprintf("?limit=%d",limit)
+	}
+
+	fmt.Println("URL:" + url)
+
 	var counter = 0
-	var countries []string
+	var countries []Country
 	responseCountries, err:= http.Get(url)
 	if err != nil {
 		fmt.Print(err.Error())
@@ -201,9 +236,9 @@ func getCountriesFromLanguage(language string, limit int) []string{
 
 
 	for _, country := range response{
-		countries = append(countries, country.OfficialName)
+		countries = append(countries, country)
 		counter++
-		if (counter > limit){
+		if ( limit != -1 && counter >= limit){
 			return countries
 		}
 	}
@@ -212,9 +247,8 @@ func getCountriesFromLanguage(language string, limit int) []string{
 
 }
 
-
-func getPopulationForCountry(countryName string){
-	val url = fmt.Sprintf("https://restcountries.com/v3.1/name/%s",countryName)
+func getPopulationForCountry(countryName string) int{
+	var url = fmt.Sprintf("http://129.241.150.113:8080/v3.1/name/%s?fields=population",countryName)
 	responseCountryData, err:= http.Get(url)
 	if err != nil {
 		fmt.Print(err.Error())
@@ -226,10 +260,58 @@ func getPopulationForCountry(countryName string){
 		log.Fatal(err)
 	}
 
+	var response RestCountriesResponse
+	json.Unmarshal(responseData, &response)
+
+	return response[0].Population
+
 }
 
 func status(w http.ResponseWriter, r *http.Request){
-	fmt.Fprintf(w, "Status API")
+	var gutenburgStatus = "0"
+	var languagesToCountriesStatus = "0"
+	var restCountriesStatus = "0"
+	var version = "v1"
+
+	//check availability of gutenberg
+	responseBooks, err := http.Get("http://129.241.150.113:8000/books")
+	if err != nil {
+		fmt.Print(err.Error())
+		gutenburgStatus = "500"
+	} else {
+		gutenburgStatus = responseBooks.Status
+	}
+
+	//check availability of languagetocountries
+	responseLanguage, err := http.Get("http://129.241.150.113:3000/language2countries/no")
+	if err != nil {
+		fmt.Print(err.Error())
+		languagesToCountriesStatus = "500"
+	} else {
+		languagesToCountriesStatus = responseLanguage.Status
+	}
+
+	//check availability of restCountries
+	responseCountries, err := http.Get("http://129.241.150.113:8080/v3.1/name/Norway?fields=population")
+	if err != nil {
+		fmt.Print(err.Error())
+		restCountriesStatus = "500"
+	} else {
+		restCountriesStatus = responseCountries.Status
+	}
+
+
+	var status = StatusResponse{
+		gutenburgStatus,
+		languagesToCountriesStatus,
+		restCountriesStatus,
+		version,
+		"idk yet",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(status)
+
 	fmt.Println("Endpoint Hit: Status")
 }
 
