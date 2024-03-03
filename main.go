@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -89,37 +88,47 @@ func findUniqueAuthors(books []Book) int {
 	return len(authorMap)
 }
 
-func getTotalBooks() int {
+func getTotalBooks() (int, error) {
 	responseBooks, err := http.Get("http://129.241.150.113:8000/books")
 	if err != nil {
 		fmt.Print(err.Error())
-		os.Exit(1)
+		return 0, err
 	}
 
 	responseData, err := ioutil.ReadAll(responseBooks.Body)
 	if err != nil {
-		log.Fatal(err)
+		return 0, err
 	}
 	var response GutenbergBookResponse
 	json.Unmarshal(responseData, &response)
-	return response.Count
+	return response.Count, nil
 }
 
 func bookCount(w http.ResponseWriter, r *http.Request){
-
+	var responseList []BookCountResponse
 	var queryParameters = r.URL.Query()
+
 	if !queryParameters.Has("language"){
 		return
 	}
+	var totalBooks, err = getTotalBooks()
+	if err != nil{
+		returnErrorStatus(w, err.Error())
+	}
 
-	var responseList []BookCountResponse
-	var totalBooks = getTotalBooks()
 	var languages = queryParameters.Get("language")
 	var languageArray = strings.Split(languages, ",")
 
 
 	for _, language := range languageArray{
-		responseList = append(responseList, bookCountForSingleLanguage(language, totalBooks))
+		var response, err = bookCountForSingleLanguage(language, totalBooks)
+
+		if err != nil {
+			returnErrorStatus(w, err.Error())
+			return
+		}
+
+		responseList = append(responseList, response)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -128,7 +137,7 @@ func bookCount(w http.ResponseWriter, r *http.Request){
 
 }
 
-func bookCountForSingleLanguage(language string, totalBooks int) BookCountResponse{
+func bookCountForSingleLanguage(language string, totalBooks int) (BookCountResponse, error){
 	var page = 1
 	var hasNextPage = true
 	var allBooks []Book
@@ -139,12 +148,12 @@ func bookCountForSingleLanguage(language string, totalBooks int) BookCountRespon
 		responseBooks, err:= http.Get(url)
 		if err != nil{
 			fmt.Print(err.Error())
-			os.Exit(1)
+			return BookCountResponse{}, err
 		}
 
 		responseData, err := ioutil.ReadAll(responseBooks.Body)
 		if err != nil {
-			log.Fatal(err)
+			return BookCountResponse{}, err
 		}
 
 		var response GutenbergBookResponse
@@ -168,10 +177,11 @@ func bookCountForSingleLanguage(language string, totalBooks int) BookCountRespon
 			float32(count) / float32(totalBooks),
 		}
 
-		return ourResponse
+		return ourResponse, nil
 }
 
 func readership(w http.ResponseWriter, r *http.Request){
+	var response []ReadershipCountry
 	var limit = -1
 
 	if (r.URL.Query().Has("limit")){
@@ -179,16 +189,28 @@ func readership(w http.ResponseWriter, r *http.Request){
 	}
 
 	var language = path.Base(r.URL.Path)
-	var countries = getCountriesFromLanguage(language,limit)
-	var response []ReadershipCountry
+	var countries, err = getCountriesFromLanguage(language,limit)
+
+	if err != nil{
+		returnErrorStatus(w, err.Error())
+	}
 
 
 
 	//fraction will be wrong here but it is not needed
-	var bookInfo = bookCountForSingleLanguage(language,100)
+	var bookInfo, err2 = bookCountForSingleLanguage(language,100)
+
+	if err != nil{
+		returnErrorStatus(w, err2.Error())
+	}
 
 	for _, country := range countries{
-		var population = getPopulationForCountry(country.OfficialName)
+		var population,error = getPopulationForCountry(country.OfficialName)
+
+		if error != nil{
+			returnErrorStatus(w,error.Error())
+			return
+		}
 
 		var singleCountry = ReadershipCountry{
 			country.OfficialName,
@@ -208,26 +230,30 @@ func readership(w http.ResponseWriter, r *http.Request){
 
 }
 
-func getCountriesFromLanguage(language string, limit int) []Country{
+func returnErrorStatus(w http.ResponseWriter,error string){
+	w.WriteHeader(http.StatusInternalServerError)
+	fmt.Fprintf(w,error)
+}
+
+func getCountriesFromLanguage(language string, limit int) ([]Country, error){
 	var url = fmt.Sprintf("http://129.241.150.113:3000/language2countries/%s",language)
 
 	if (limit != -1){
 		url = url + fmt.Sprintf("?limit=%d",limit)
 	}
 
-	fmt.Println("URL:" + url)
 
 	var counter = 0
 	var countries []Country
 	responseCountries, err:= http.Get(url)
 	if err != nil {
 		fmt.Print(err.Error())
-		os.Exit(1)
+		return nil, err
 	}
 
 	responseData, err := ioutil.ReadAll(responseCountries.Body)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 
@@ -239,31 +265,33 @@ func getCountriesFromLanguage(language string, limit int) []Country{
 		countries = append(countries, country)
 		counter++
 		if ( limit != -1 && counter >= limit){
-			return countries
+			return countries,nil
 		}
 	}
 
-	return countries
+	return countries,nil
 
 }
 
-func getPopulationForCountry(countryName string) int{
+func getPopulationForCountry(countryName string) (int, error){
 	var url = fmt.Sprintf("http://129.241.150.113:8080/v3.1/name/%s?fields=population",countryName)
 	responseCountryData, err:= http.Get(url)
 	if err != nil {
 		fmt.Print(err.Error())
-		os.Exit(1)
+		return 0,err
 	}
+
 
 	responseData, err := ioutil.ReadAll(responseCountryData.Body)
 	if err != nil {
 		log.Fatal(err)
+		return 0,err
 	}
 
 	var response RestCountriesResponse
 	json.Unmarshal(responseData, &response)
 
-	return response[0].Population
+	return response[0].Population,nil
 
 }
 
@@ -315,11 +343,14 @@ func status(w http.ResponseWriter, r *http.Request){
 	fmt.Println("Endpoint Hit: Status")
 }
 
+func health(w http.ResponseWriter, r *http.Request){
+}
 
 func handleRequests() {
 	http.HandleFunc("/librarystats/v1/bookcount/", bookCount)
 	http.HandleFunc("/librarystats/v1/readership/", readership)
 	http.HandleFunc("/librarystats/v1/status/", status)
+	http.HandleFunc("/health/",health)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
