@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
+	"strings"
 )
 
 type BookCountResponse struct {
@@ -15,6 +17,27 @@ type BookCountResponse struct {
 	Authors int	`json:"authors"`
 	Fraction float32 `json:"fraction"`
 }
+
+type ReadershipResponse struct {
+	Country 	string	`json:"country"`
+	Iso 		string	`json:"isocode"`
+	Nooks		int		`json:"books"`
+	Authors		int		`json:"authors"`
+	Readerhship	int		`json:"readership"`
+
+}
+
+
+type Country struct {
+	Iso_three 	string `json:"ISO3166_1_Alpha_3"`
+	Iso_two			string `json:"ISO3166_1_Alpha_2"`
+	OfficialName	string `json:"Official_Name"`
+	Region		string	`json:"Region_Name"`
+	SubRegion	string  `json:"Sub_Region_Name"`
+	Language 	string	`json:"Language"`
+}
+
+type LanguageToCountriesResponse []Country
 
 type Person struct {
 	BirthYear int `json:"birth_year"`
@@ -76,42 +99,134 @@ func bookCount(w http.ResponseWriter, r *http.Request){
 	if !queryParameters.Has("language"){
 		return
 	}
-	responseBooks, err := http.Get("http://129.241.150.113:8000/books/?languages=" + queryParameters.Get("language"))
 
+	var responseList []BookCountResponse
+	var totalBooks = getTotalBooks()
+	var languages = queryParameters.Get("language")
+	var languageArray = strings.Split(languages, ",")
+
+
+	for _, language := range languageArray{
+		responseList = append(responseList, bookCountForSingleLanguage(language, totalBooks))
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(responseList)
+
+
+}
+
+func bookCountForSingleLanguage(language string, totalBooks int) BookCountResponse{
+	var page = 1
+	var hasNextPage = true
+	var allBooks []Book
+	var count = 0
+
+	for(hasNextPage){
+		var url = fmt.Sprintf("http://129.241.150.113:8000/books/?languages=%s&page=%d",language,page)
+		responseBooks, err:= http.Get(url)
+		if err != nil{
+			fmt.Print(err.Error())
+			os.Exit(1)
+		}
+
+		responseData, err := ioutil.ReadAll(responseBooks.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var response GutenbergBookResponse
+
+		json.Unmarshal(responseData, &response)
+
+		allBooks = append(allBooks, response.Books...)
+		if response.Next == "" {
+			hasNextPage = false
+			count = response.Count
+		}  else {
+			page++
+		}
+	}
+
+
+		var ourResponse = BookCountResponse{
+			language,
+			count,
+			findUniqueAuthors(allBooks),
+			float32(count) / float32(totalBooks),
+		}
+
+		return ourResponse
+}
+
+func readership(w http.ResponseWriter, r *http.Request){
+	var language = path.Base(r.URL.Path)
+	var countryNames = getCountriesFromLanguage(language,10)
+	//
+
+	for _, countryName := range countryNames{
+
+	}
+
+	fmt.Fprintf(w, "Readership API")
+	fmt.Println("Endpoint Hit: Readership")
+
+	//{
+	//     "country": "Norway",
+	//     "isocode": "NO",
+	//     "books": 21,
+	//     "authors": 14,
+	//     "readership": 5379475
+	//  },
+}
+
+func getCountriesFromLanguage(language string, limit int) []string{
+	var url = fmt.Sprintf("http://129.241.150.113:3000/language2countries/%s",language)
+	var counter = 0
+	var countries []string
+	responseCountries, err:= http.Get(url)
 	if err != nil {
 		fmt.Print(err.Error())
 		os.Exit(1)
 	}
 
-	responseData, err := ioutil.ReadAll(responseBooks.Body)
+	responseData, err := ioutil.ReadAll(responseCountries.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
-	var response GutenbergBookResponse
+
+
+	var response LanguageToCountriesResponse
 	json.Unmarshal(responseData, &response)
 
-	var ourResponse = BookCountResponse{
-		queryParameters.Get("language"),
-		response.Count,
-		findUniqueAuthors(response.Books),
-		float32(response.Count) / float32(getTotalBooks()),
+
+	for _, country := range response{
+		countries = append(countries, country.OfficialName)
+		counter++
+		if (counter > limit){
+			return countries
+		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(ourResponse)
+	return countries
 
-	fmt.Println("Language:", queryParameters.Get("language"))
-	fmt.Println("Books:", response.Count)
-	fmt.Println("Authors:",findUniqueAuthors(response.Books))
-	fmt.Println("Fraction:",float32(response.Count) / float32(getTotalBooks()))
-	//fmt.Fprintf(w, string(responseData))
 }
 
-func readership(w http.ResponseWriter, r *http.Request){
-	fmt.Fprintf(w, "Readership API")
-	fmt.Println("Endpoint Hit: Readership")
-}
 
+func getPopulationForCountry(countryName string){
+	val url = fmt.Sprintf("https://restcountries.com/v3.1/name/%s",countryName)
+	responseCountryData, err:= http.Get(url)
+	if err != nil {
+		fmt.Print(err.Error())
+		os.Exit(1)
+	}
+
+	responseData, err := ioutil.ReadAll(responseCountryData.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
 
 func status(w http.ResponseWriter, r *http.Request){
 	fmt.Fprintf(w, "Status API")
