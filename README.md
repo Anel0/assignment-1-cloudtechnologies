@@ -1,23 +1,29 @@
-# assignment-1
+# Assignment 1
 
 
 
-## Getting started
+## Author - Ane Lo
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
 
-## Add your files
+## Description
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+Welcome to the Book Information API documentation! This REST web application, written in Golang, serves as a gateway to access specific information about books from the Gutendex library. The service is built on three pre-existing APIs
 
 ```
-cd existing_repo
-git remote add origin https://git.gvk.idi.ntnu.no/course/prog2005/prog2005-2024-workspace/anel0/assignment-1.git
-git branch -M main
-git push -uf origin main
+- Gutendex API
+    Endpoint: http://129.241.150.113:8000/books/
+    Documentation: http://129.241.150.113:8000/
+
+
+- Language2Countries API
+    Endpoint: http://129.241.150.113:3000/language2countries/
+    Documentation: http://129.241.150.113:3000/
+
+
+- REST Countries API
+    Endpoint: http://129.241.150.113:8080/v3.1
+    Documentation: http://129.241.150.113:8080/
 ```
 
 ## Integrate with your tools
