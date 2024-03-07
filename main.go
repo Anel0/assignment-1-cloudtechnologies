@@ -11,11 +11,12 @@ import (
 	"strings"
 )
 
+//structs-------------------------------------------------------
 type BookCountResponse struct {
-	Language	string `json:"language"`
-	Books	int	`json:"books"`
-	Authors int	`json:"authors"`
-	Fraction float32 `json:"fraction"`
+	Language	string  `json:"language"`
+	Books		int		`json:"books"`
+	Authors 	int		`json:"authors"`
+	Fraction 	float32 `json:"fraction"`
 }
 
 type ReadershipCountry struct {
@@ -40,43 +41,44 @@ type RestCountriesResponse []struct {
 }
 
 type Country struct {
-	Iso_three 	string `json:"ISO3166_1_Alpha_3"`
-	Iso_two			string `json:"ISO3166_1_Alpha_2"`
-	OfficialName	string `json:"Official_Name"`
-	Region		string	`json:"Region_Name"`
-	SubRegion	string  `json:"Sub_Region_Name"`
-	Language 	string	`json:"Language"`
+	Iso_three 		string  `json:"ISO3166_1_Alpha_3"`
+	Iso_two			string  `json:"ISO3166_1_Alpha_2"`
+	OfficialName	string  `json:"Official_Name"`
+	Region			string	`json:"Region_Name"`
+	SubRegion		string  `json:"Sub_Region_Name"`
+	Language 		string	`json:"Language"`
 }
 
 type LanguageToCountriesResponse []Country
 
 type Person struct {
-	BirthYear int `json:"birth_year"`
-	DeathYear int `json:"death_year"`
-	Name string `json:"name"`
+	BirthYear 	int 	`json:"birth_year"`
+	DeathYear 	int 	`json:"death_year"`
+	Name 		string  `json:"name"`
 }
 
 type Book struct {
-	Id    int    `json:"id"`
-	Title	string	`json:"title"`
-	Subjects	[]string	`json:"subjects"`
-	Authors	[]Person	`json:"authors"`
-	Translators	[]Person	`json:"translators"`
-	Bookshelves	[]string	`json:"bookshelves"`
-	Languages	[]string	`json:"languages"`
-	Copyright	bool	`json:"copyright"`
-	MediaType	map[string][]string	`json:"media_type"`
-	Formats	string	`json:"formats"`
-	DownloadCount	int	`json:"download_count"`
+	Id    			int   				`json:"id"`
+	Title			string				`json:"title"`
+	Subjects		[]string			`json:"subjects"`
+	Authors			[]Person			`json:"authors"`
+	Translators		[]Person			`json:"translators"`
+	Bookshelves		[]string			`json:"bookshelves"`
+	Languages		[]string			`json:"languages"`
+	Copyright		bool				`json:"copyright"`
+	MediaType		map[string][]string	`json:"media_type"`
+	Formats			string				`json:"formats"`
+	DownloadCount	int					`json:"download_count"`
 }
 
 type GutenbergBookResponse struct {
-	Count    int    `json:"count"`
-	Next    string    `json:"next"`
+	Count    	int       `json:"count"`
+	Next    	string    `json:"next"`
 	Previous    string    `json:"previous"`
-	Books []Book `json:"results"`
+	Books 		[]Book 	  `json:"results"`
 }
 
+//Functionality-----------------------------------------------------
 func findUniqueAuthors(books []Book) int {
 	authorMap := make(map[string]int)
 	for i := 0; i < len(books); i++ {
@@ -334,7 +336,7 @@ func status(w http.ResponseWriter, r *http.Request){
 		languagesToCountriesStatus,
 		restCountriesStatus,
 		version,
-		"idk yet",
+		"since March 6, 2024 at 11:18",
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -342,10 +344,10 @@ func status(w http.ResponseWriter, r *http.Request){
 
 	fmt.Println("Endpoint Hit: Status")
 }
-
+//used for testing deployment on Render
 func health(w http.ResponseWriter, r *http.Request){
 }
-
+//Handler for endpoints
 func handleRequests() {
 	http.HandleFunc("/librarystats/v1/bookcount/", bookCount)
 	http.HandleFunc("/librarystats/v1/readership/", readership)
