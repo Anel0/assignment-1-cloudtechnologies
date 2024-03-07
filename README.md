@@ -216,6 +216,14 @@ Localhost:
 to test the program on your own, clone the git repo,
 open the program in your preferred IDE and run the program. 
 The default server runs on https://localhost8080
+ 
+```
+http://localhost:8080/librarystats/v1/bookcount/
+http://localhost:8080/librarystats/v1/readership/
+http://localhost:8080/librarystats/v1/status/
+```
+
+
 
 
 
