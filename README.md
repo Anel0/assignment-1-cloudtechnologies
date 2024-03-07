@@ -8,92 +8,218 @@
 
 ## Description
 
-Welcome to the Book Information API documentation! This REST web application, written in Golang, serves as a gateway to access specific information about books from the Gutendex library. The service is built on three pre-existing APIs
+Welcome to the Book Information API documentation! This REST web application, written in Golang, serves as a gateway to access specific information about books from the Gutendex library. The service is built on the data from three pre-existing APIs:
 
-```
+
 - Gutendex API
-    Endpoint: http://129.241.150.113:8000/books/
-    Documentation: http://129.241.150.113:8000/
+    - Endpoint: http://129.241.150.113:8000/books/
+    - Documentation: http://129.241.150.113:8000/
 
 
 - Language2Countries API
-    Endpoint: http://129.241.150.113:3000/language2countries/
-    Documentation: http://129.241.150.113:3000/
+    - Endpoint: http://129.241.150.113:3000/language2countries/
+    - Documentation: http://129.241.150.113:3000/
 
 
 - REST Countries API
-    Endpoint: http://129.241.150.113:8080/v3.1
-    Documentation: http://129.241.150.113:8080/
+    - Endpoint: http://129.241.150.113:8080/v3.1
+    - Documentation: http://129.241.150.113:8080/
+
+
+The application has three endpoints of its own, listed and described below.
+
+
+# Endpoints
+
+
+
+## Bookcount Endpoint
+
+Like in the assignment description, this initial endpoint returns the number of books for any given language, identified via country 2-letter language ISO codes (ISO 639 Set 1), as well as the number of unique authors. This can be a single as well as multiple languages (comma-separated language codes).
+
+
+**Request:**
+
+```
+Method: GET
+Path: bookcount/?language={:two_letter_language_code+}/
 ```
 
-## Integrate with your tools
 
-- [ ] [Set up project integrations](https://git.gvk.idi.ntnu.no/course/prog2005/prog2005-2024-workspace/anel0/assignment-1/-/settings/integrations)
 
-## Collaborate with your team
+two_letter_language_code is the corresponding 2-letter language ISO codes (ISO 639 Set 1)
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
 
-## Test and Deploy
+**Example requests:**
 
-Use the built-in continuous integration in GitLab.
+```
+bookcount/?language=no
+bookcount/?language=no,fi
+```
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
 
-***
 
-# Editing this README
+**Response**
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Content type: application/json
 
-## Suggestions for a good README
+Body (Example):
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+```
+[
+  {
+     "language": "no",
+     "books": 21,
+     "authors": 14,
+     "fraction": 0.0005
+  },
+  {
+     "language": "fi",
+     "books": 2798,
+     "authors": 228,
+     "fraction": 0.0671
+  }
+]
+```
 
-## Name
-Choose a self-explaining name for your project.
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+checklist:
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+- [ ] The language code is the same as the input code.
+- [ ] The book and author information is highlighting the number of available books and authors (from gutendex) in the queried language.
+- [ ] The fraction is the number of books divided by all books served via gutendex.
+- [ ] The service should be generic (i.e., allow open entry for any language)
+- [ ] As indicated above, the service should allow for single or multiple languages.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+
+## Readership Endpoint
+
+This second endpoint returns the number of potential readers for books in a given language, i.e., the population per country in which that language is official (and hence assuming that the inhabitants can potentially read it).the number of potential readers is provided together with the number of books and authors associated with a given language. 
+
+**Request**
+
+```
+Method: GET
+Path: readership/{:two_letter_language_code}{?limit={:number}}
+```
+
+
+- {:two_letter_language_code} refers to the ISO639 Set 1 identifier of the language for which you establish readership.
+
+- {?limit={:number}} is an optional parameter that limits the number of country entries that are reported (in addition to the total number).
+
+**Example requests:**
+
+```
+readership/no
+readership/no/?limit=5
+```
+
+
+**Response**
+
+Content type: application/json
+
+Status code: gives 200 if everything is OK
+
+
+Body (Example):
+
+```
+[ 
+  {
+     "country": "Norway",
+     "isocode": "NO",
+     "books": 21,
+     "authors": 14,
+     "readership": 5379475
+  },
+  {
+     "country": "Svalbard and Jan Mayen",
+     "isocode": "SJ",
+     "books": 21,
+     "authors": 14,
+     "readership": 2562
+  },
+  {
+     "country": "Iceland",
+     "isocode": "IS",
+     "books": 21,
+     "authors": 14,
+     "readership": 366425
+  }
+]
+```
+
+
+checklist:
+
+- [ ] The isocode field should be the two-letter ISO code for the country (recall: country != language) (as per ISO3166-1-Alpha-2).
+- [ ] The readership is the population of that country.
+- [ ] The country name should be the English country name.
+- [ ] The book and author information is - as with the previous endpoint - highlighting the number of available books and authors (from gutendex) in the queried language.
+- [ ] This endpoint only needs to support input of a single (not multiple) languages at a given time.
+
+
+
+## Status Endpoint
+The diagnostics interface indicates the availability of individual services this service depends on. The reporting occurs based on status codes returned by the dependent services, and it further provides information about the uptime of the service.
+
+**Request**
+
+```
+Method: GET
+Path: status/
+```
+
+
+**Response**
+
+Content type: application/json
+
+Status code: 200 if everything is OK
+
+Body:
+
+```
+{
+   "gutendexapi": "<http status code for gutendex API>",
+   "languageapi: "<http status code for language2countries API>", 
+   "countriesapi": "<http status code for restcountries API>",
+   "version": "v1",
+   "uptime": <time in seconds from the last service restart>
+}
+```
+
+Note: < some value > indicates placeholders for values to be populated by the service.
+
+
+
+## How to use
+
+
+The application is reployed on Render 
+- URL: https://assignment-1-cloudtechnologies.onrender.com
+
+Exmples of how to use web service:
+
+https://assignment-1-cloudtechnologies.onrender.com/librarystats/v1/status/
+https://assignment-1-cloudtechnologies.onrender.com/librarystats/v1/bookcount/?language=no,ko,se
+https://assignment-1-cloudtechnologies.onrender.com/librarystats/v1/readership/se?limit=1
+
+
+
+Localhost:
+
+to test the program on your own, clone the git repo,
+open the program in your preferred IDE and run the program. 
+The default server runs on https://localhost8080
+
+
 
 ## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+If you have questions or feedback, please email Ane at:
+- anlo@stud.ntnu.no
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
